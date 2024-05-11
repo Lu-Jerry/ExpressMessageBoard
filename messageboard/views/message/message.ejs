@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    
+    <title>Document</title>
+</head>
+<body>
+    <h1><a href="/message">留言板</a></h1>
+    <h2><%= msg %></h2>
+    <a href="/message/create">新增留言</a>
+    <a href="/message/signup">註冊</a>
+    <a href="/message/login">登入</a>
+   
+    <div>
+        <table border="1">
+            <tbody>
+                <tr>
+                    <th>留言者</th>
+                    <th>標題</th>
+                    <th>留言內容</th>
+                    <th>時間</th>
+                    <th>修改</th>
+                    <th>刪除</th>
+                    <th>ajax修改</th>
+                    <th>ajax刪除</th>
+                </tr>
+                <% dataList.forEach(item =>{ %>
+                    <tr>
+                        <td><%= item.nickname %></td>
+                        <td><%= item.title %></td>
+                        <td><%= item.content %></td>
+                        <td><%= item.createdAt %></td>
+                        <td><a href="/message/<%= item.id %>">修改</a></td>
+                        <td>
+                            <form method="post" action="/message/delete/<%= item.id %>?_method=delete" class="delForm">
+                                <input type="hidden" name="id" value="<%= item.id %>" />
+                                <button type="button" class="delBtn">刪除</button>
+                            </form>
+                        </td>
+                        <td><button type="button" class="editAjaxBtn" data-id="<%= item.id %>">ajax修改</button></td>
+                        <td><button type="button" class="delAjaxBtn" data-id="<%= item.id %>">ajax刪除</button></td>
+                    </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    </div>
+
+    <hr>
+    <div>
+        <button type="button" id="getDataBtn"  class="btn btn-secondary">取得所有留言資料</button>
+        <button type="button" id="createBtn" class="btn btn-secondary">新增留言</button>
+    </div>
+    <div id="apiDataDiv">
+
+    </div>
+    <div class="modal fade" id="messageModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="messageId" class="messageItem" value="" />
+                <table>
+                    <tbody>
+                        <tr>
+                            <th>留言者</th>
+                            <td><input type="text" id="nickname" class="messageItem" value="" maxlength="10" /></td>
+                        </tr>
+                        <tr>
+                            <th>標題</th>
+                            <td><input type="text" id="title" class="messageItem" value="" maxlength="10" /></td>
+                        </tr>
+                        <tr>
+                            <th>留言內容</th>
+                            <td><textarea rows="5" cols="50" id="content"></textarea></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">關閉</button>
+              <button type="button" id="createSubmitBtn" class="btn btn-primary">新增留言</button>
+              <button type="button" id="editSubmitBtn" class="btn btn-primary">修改留言</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+<script>
+const messageModal = new bootstrap.Modal($("#messageModal"), { keyboard: false });
+
+$(document).ready(function(){
+    var modal = document.getElementById('messageModal')
+    modal.addEventListener('hidden.bs.modal', function (event) {
+        $(".messageItem").val("");
+        $("#content").text("");
+    });
+
+    $(".delBtn").click(function(){
+        let delForm = $(this).parent(".delForm");
+
+        if(confirm("確定要刪除?")){
+            delForm.submit();
+        }
+    });
+
+    $("#getDataBtn").click(function(){
+        let apiDataDiv = $("#apiDataDiv");
+
+        apiDataDiv.empty();
+
+        $.ajax({
+            url:"/messageApi/message",
+            type: "get",
+            dataType: "json",
+            beforeSend:function(xhr){
+                let token = localStorage.getItem("token");
+
+                if(token){
+                    xhr.setRequestHeader('Authorization', token);
+                }
+            },
+            success:function(result){
+                if(result.code == "0000"){
+                    let data           = result.data;
+                    let table          = $("<table></table>").attr({ border : 1 });
+                    let columnTr       = $("<tr></tr>");
+                    let nicknameColumn = $("<th></th>").html("留言者");
+                    let titleColumn    = $("<th></th>").html("標題");
+                    let contentColumn  = $("<th></th>").html("留言內容");
+                    let dateColumn     = $("<th></th>").html("時間");
+
+                    columnTr.append(columnTr, nicknameColumn, titleColumn, contentColumn, dateColumn);
+                    table.append(columnTr);
+
+                    data.forEach(item => {
+                        let dataTr = $("<tr></tr>");
+                        let nicknameTd = $("<td></td>").html(item.nickname);
+                        let titleTd = $("<td></td>").html(item.title);
+                        let contentTd = $("<td></td>").html(item.content);
+                        let dateTd = $("<td></td>").html(item.createdAt);
+
+                        dataTr.append(nicknameTd, titleTd, contentTd, dateTd);
+
+                        table.append(dataTr);
+                    });
+
+                    apiDataDiv.append(table);
+                }else{
+                    alert(result.msg);
+                }
+            },
+            error:function(xhr, ajaxOptions, thrownError){
+                alert("發生錯誤");
+            }
+        });
+    });
+
+    $(".delAjaxBtn").click(function(){
+        let tr = $(this).parents("tr")
+        let id = $(this).data("id");
+
+        if(confirm("確定要刪除?")){
+            $.ajax({
+                url:"/messageApi/delete",
+                data: { id : id },
+                type: "put",
+                dataType: "json",
+                beforeSend:function(xhr){
+                    let token = localStorage.getItem("token");
+
+                    if(token){
+                        xhr.setRequestHeader('Authorization', token);
+                    }
+                },
+                success:function(result){
+                    alert(result.msg);
+
+                    if(result.code == "0000"){
+                        tr.remove();
+                    }
+                },
+                error:function(xhr, ajaxOptions, thrownError){
+                    alert("發生錯誤");
+                }
+            });
+        }        
+    });
+
+    $("#createBtn").click(function(){
+        messageModal.show();
+
+        $("#createSubmitBtn").show();
+        $("#editSubmitBtn").hide();
+    });
+
+    $("#createSubmitBtn").click(function(){
+        let nickname = $("#nickname");
+        let title = $("#title");
+        let content = $("#content");
+      
+        if(nickname.val() != "" && title.val() != "" && content.val() != ""){
+            let data = { nickname : nickname.val(), title : title.val(), content : content.val() };
+
+            $.ajax({
+                url:"/messageApi/store",
+                data: data,
+                type: "post",
+                dataType: "json",
+                beforeSend:function(xhr){
+                    let token = localStorage.getItem("token");
+
+                    if(token){
+                        xhr.setRequestHeader('Authorization', token);
+                    }
+                },
+                success:function(result){
+                    alert(result.msg);
+
+                    if(result.code == "0000"){
+                        location.reload();
+                    }
+                },
+                error:function(xhr, ajaxOptions, thrownError){
+                    alert("發生錯誤");
+                }
+            });
+        }else{
+            alert("有資料未填寫");
+        }
+    });
+
+    $(".editAjaxBtn").click(function(){
+        let messageId = $(this).data("id");
+        
+        $.ajax({
+            url:"/messageApi/data",
+            data: { messageId : messageId },
+            type: "post",
+            dataType: "json",
+            beforeSend:function(xhr){
+                let token = localStorage.getItem("token");
+
+                if(token){
+                    xhr.setRequestHeader('Authorization', token);
+                }
+            },
+            success:function(result){
+                if(result.code == "0000"){
+                    $("#createSubmitBtn").hide();
+                    $("#editSubmitBtn").show();
+                    messageModal.show();
+
+                    $("#messageId").val(messageId);
+                    $("#nickname").val(result.data.nickname);
+                    $("#title").val(result.data.title);
+                    $("#content").text(result.data.content);
+                }else{
+                    alert(result.msg);
+                }
+            },
+            error:function(xhr, ajaxOptions, thrownError){
+                alert("發生錯誤");
+            }
+        });
+    });
+
+    $("#editSubmitBtn").click(function(){
+        let nickname = $("#nickname");
+        let title = $("#title");
+        let content = $("#content");
+        let messageId = $("#messageId");
+
+        if(nickname.val() != "" && title.val() != "" && content.val() != "" && messageId.val() != ""){
+            let data = { nickname : nickname.val(), title : title.val(), content : content.val(), messageId : messageId.val() };
+
+            $.ajax({
+                url:"/messageApi/update",
+                data: data,
+                type: "put",
+                dataType: "json",
+                beforeSend:function(xhr){
+                    let token = localStorage.getItem("token");
+
+                    if(token){
+                        xhr.setRequestHeader('Authorization', token);
+                    }
+                },
+                success:function(result){
+                    alert(result.msg);
+
+                    if(result.code == "0000"){
+                        location.reload();
+                    }
+                },
+                error:function(xhr, ajaxOptions, thrownError){
+                    alert("發生錯誤");
+                }
+            });
+        }else{
+            alert("有資料未填寫");
+        }
+    });
+});
+</script>
+</body>
+</html>

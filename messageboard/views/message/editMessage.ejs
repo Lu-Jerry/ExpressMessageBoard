@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>修改留言</h1>
+    <a href="/message">回首頁</a>
+    <form method="post" action="/message/edit/<%= data.id %>?_method=put">
+        <table border="1">
+            <tr>
+                <th>留言者</th>
+                <td><input type="text" name="nickname" value="<%= data.nickname %>" maxlength="10" /></td>
+            </tr>
+            <tr>
+                <th>標題</th>
+                <td><input type="text" name="title" value="<%= data.title %>" maxlength="15" /></td>
+            </tr>
+            <tr>
+                <th>留言內容</th>
+                <td>
+                    <textarea rows="5" cols="50" name="content"><%= data.content %></textarea>
+                </td>
+            </tr>
+            <tr><td colspan="2"><button type="submit">送出</button></td></tr>
+        </table>
+    </form>   
+</body>
+</html>
